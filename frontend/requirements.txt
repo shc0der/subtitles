@@ -1,0 +1,10 @@
+injector==0.22.0
+
+pydantic==2.10.6
+pydantic-settings==2.7.1
+
+streamlit==1.42.0
+
+celery==5.4.0
+redis==5.2.1
+pandas==2.2.3

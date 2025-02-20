@@ -1,0 +1,43 @@
+version: '3.9'
+services:
+  app_service:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+    - "8080:8080"
+    volumes:
+      - ./frontend/app:/home/app
+      - ./data/uploads:/home/data/uploads
+
+  redis_service:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker_service:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    volumes:
+      - ./worker/app:/home/app
+      - ./data/uploads:/home/data/uploads
+      - ./data/models/whisper:/home/data/models/whisper
+    depends_on:
+      redis_service:
+        condition: service_healthy
+
+  monitor_service:
+    build:
+      context: ./monitor
+      dockerfile: Dockerfile
+    ports:
+      - "5555:5555"
+    depends_on:
+      worker_service:
+        condition: service_started

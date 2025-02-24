@@ -15,7 +15,7 @@ class TaskDispatcher:
         self._task_video_processing = task_video_processing
         self._subtitle_session = subtitle_receiver_session
 
-    def video_processing(self, video_path: str) -> Any:
+    def start_video_processing(self, video_path: str) -> Any:
         try:
             payload = VideoData(video_path=video_path)
             result = self._celery.send_task(self._task_video_processing, kwargs=payload.model_dump())
@@ -27,29 +27,26 @@ class TaskDispatcher:
         except Exception as err:
             return Result.failure(f"Something went wrong with the task launch. {err}")
 
-
-    def video_processing_info(self):
+    def get_video_processing_state(self):
         task_id = self._subtitle_session.get_task_id()
-        if task_id is None:
-            yield {}
-        else:
+        if task_id is not None:
             result = AsyncResult(task_id, app=self._celery)
             state = result.state
-
             if state == "PENDING":
-                self._subtitle_session.set_info_message("The task has been queued, and the launch is expected...")
+                self._subtitle_session.set_message("The task has been queued, and the launch is expected...")
             elif state == "PROGRESS":
                 meta = result.info or {}
-                self._subtitle_session.set_info_message(meta.get("message", ""))
+                self._subtitle_session.set_message(meta.get("message") or "")
             elif state == "SUCCESS":
-                data = result.result
+                payload, data = result.result, result.result["data"]
                 self._subtitle_session.set_task_id(None)
-                self._subtitle_session.set_info_message(data.get("message",""))
-                yield {"state": state, "result": data}
+                self._subtitle_session.set_message(payload.get("message") or "")
+                self._subtitle_session.set_subtitle_path(data["subtitle_path"])
+                yield state, data
             elif state == "ERROR":
                 meta = result.info or {}
                 self._subtitle_session.set_task_id(None)
-                self._subtitle_session.set_info_message(meta.get("message", ""), InfoStatus.error)
+                self._subtitle_session.set_message(meta.get("message") or "", InfoStatus.error)
             elif state == "FAILURE":
                 self._subtitle_session.set_task_id(None)
-                self._subtitle_session.set_info_message("An error occurred while processing the video!", InfoStatus.error)
+                self._subtitle_session.set_message("An error occurred while processing the video!", InfoStatus.error)

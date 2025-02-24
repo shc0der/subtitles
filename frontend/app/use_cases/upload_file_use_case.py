@@ -1,7 +1,7 @@
 import os
+import shutil
 import uuid
-
-from streamlit.runtime.uploaded_file_manager import UploadedFile
+from typing import Optional
 
 from app.data.subtitle_receiver_session import SubtitleReceiverSession
 from app.models.result import Result
@@ -12,17 +12,21 @@ class UploadFileUseCase:
         self._upload_folder = upload_folder
         self._subtitle_session = subtitle_receiver_session
 
-    def execute(self, uploaded_file: UploadedFile):
+    def execute(self, uploaded_file:Optional[str]):
         try:
-            if not os.path.exists(self._upload_folder):
-                os.makedirs(self._upload_folder)
-            if not self._subtitle_session.has_uploaded_video(uploaded_file.name):
-                file_id = str(uuid.uuid4())
-                file_path = os.path.join(self._upload_folder, f"{file_id}_{uploaded_file.name}")
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
+            if uploaded_file is None:
+                return Result.failure("File not found.")
 
-                self._subtitle_session.set_uploaded_video(file_path)
+            os.makedirs(self._upload_folder, exist_ok=True)
+
+            if not self._subtitle_session.has_uploaded_video(uploaded_file):
+                file_id = str(uuid.uuid4())
+                file_name = os.path.basename(uploaded_file)
+                file_path = os.path.join(self._upload_folder, f"{file_id}_{file_name}")
+
+                shutil.copy(uploaded_file, file_path)
+
+                self._subtitle_session.set_video_path(file_path)
             else:
                 file_path = self._subtitle_session.get_video_path()
 

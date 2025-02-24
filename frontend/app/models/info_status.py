@@ -2,5 +2,6 @@ from enum import Enum
 
 
 class InfoStatus(str, Enum):
-    info = "info"
+    success = "success"
     error = "error"
+    warning = "warning"

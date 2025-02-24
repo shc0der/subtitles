@@ -9,6 +9,6 @@ def parse_webvtt(file_path):
 
     subtitles = text_pattern.findall(content)
 
-    df = pd.DataFrame(subtitles, columns=['Start', 'End', 'Text'])
+    df = pd.DataFrame(subtitles, columns=['Start', 'End', 'Subtitle'])
 
     return df
